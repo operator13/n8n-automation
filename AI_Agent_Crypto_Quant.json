@@ -1,0 +1,682 @@
+{
+  "name": "AI Agent Crypto Quant",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": [
+          "message"
+        ],
+        "channelId": {
+          "__rl": true,
+          "value": "C092EUBCWTE",
+          "mode": "list",
+          "cachedResultName": "all-ai-agent-crypto-quant"
+        },
+        "options": {
+          "userIds": [
+            "U0927UVAMD1"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1660,
+        -340
+      ],
+      "id": "b3596ce6-e0c7-4909-8575-3e544cc625b0",
+      "name": "Slack Trigger",
+      "webhookId": "c445b310-e5ff-4d91-8f02-f9b8f94ad84d",
+      "credentials": {
+        "slackApi": {
+          "id": "yGdSgJ7iMde033md",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Try to use the plain text field, fall back to the block structure if needed\nlet rawInput = $json[\"text\"];\nif (!rawInput) {\n  try {\n    rawInput = $json[\"blocks\"][0].elements[0].elements[0].text;\n  } catch (e) {\n    rawInput = \"\";\n  }\n}\n\n// Clean up and format\nconst symbol = rawInput.trim().toUpperCase();\nconst tradingPairSymbol = `${symbol}USDT`;\nconst currentTime = Date.now().toString(); // Convert to string to ensure clean number\n\nreturn [\n  {\n    json: {\n      tradingPairSymbol,\n      currentTimestamp: currentTime\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1300,
+        -340
+      ],
+      "id": "b8d39a1b-1bdb-4b14-b3aa-5aed3df72283",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.binance.com/api/v3/klines?symbol=' + $json.tradingPairSymbol + '&interval=15m&limit=200&endTime=' + $json.currentTimestamp }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1080,
+        -340
+      ],
+      "id": "43d25781-25f4-4d39-ab11-1bba226d2ddc",
+      "name": "HTTP 15m"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.binance.com/api/v3/klines?symbol=' + $json.tradingPairSymbol + '&interval=1h&limit=200&endTime=' + $json.currentTimestamp }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1080,
+        -160
+      ],
+      "id": "4503efe0-6e07-451a-a5bb-5aca71b0c9a5",
+      "name": "HTTP 1H"
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.binance.com/api/v3/klines?symbol=' + $json.tradingPairSymbol + '&interval=1d&limit=200&endTime=' + $json.currentTimestamp }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1080,
+        20
+      ],
+      "id": "0bc5c85c-22fc-4b94-b3c9-e9e62a68fd3b",
+      "name": "HTTP 1D"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { \"timeframe\": \"15m\", \"candles\": $json } }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -860,
+        -340
+      ],
+      "id": "5fcdadeb-0abf-4aee-b1a4-8912f1c99e76",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { timeframe: \"1H\", candles: $json } }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -860,
+        -160
+      ],
+      "id": "3124ff8a-0e7b-493a-8a45-7174aa0eb7df",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { timeframe: \"1D\", candles: $json } }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -860,
+        20
+      ],
+      "id": "721eb743-5ea0-4775-9f04-44398210f604",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -480,
+        -160
+      ],
+      "id": "488beffc-813b-4b30-842b-7932c14e53e5",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// `items` is the array of all individual candle items passed to this node\nconst allCandles = items.map(item => item.json);\n\n// Return a single item with all candles grouped\nreturn [\n  {\n    json: {\n      allCandles\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -260,
+        -160
+      ],
+      "id": "dab89786-17e4-4a44-9a8f-8d3abaf92ea8",
+      "name": "combine_json_data"
+    },
+    {
+      "parameters": {
+        "url": "https://newsapi.org/v2/everything",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "Crypto OR Bitcoin OR Coindesk"
+            },
+            {
+              "name": "=from",
+              "value": "={{ new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }}"
+            },
+            {
+              "name": "sortBy",
+              "value": "popularity"
+            },
+            {
+              "name": "apiKey",
+              "value": "dadbdf431d2b475183fa19ca1de80ae2"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1080,
+        200
+      ],
+      "id": "01a45163-d195-4fb3-9d2d-10cc1b9e93b3",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const articles = $json.articles || [];\n\nconst filteredArticles = articles.map(article => ({\n  title: article.title,\n  description: article.description,\n}));\n\nreturn [\n  {\n    json: {\n      filteredArticles\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -860,
+        200
+      ],
+      "id": "91aa1ee8-2b81-431f-9524-a4f1ab512dd2",
+      "name": "Filter_news_article"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "= You are a highly intelligent and accurate\n sentiment analyzer specializing in\n cryptocurrency markets. Analyze the sentiment of\n the provided text using a two-part approach:\n 1. Short-Term Sentiment:\n - Evaluate the immediate market reaction, I\n recent news impact, and technical volatility.\n - Determine a sentiment category: \"Positive\",\n \"Neutral\", or \"Negative\".\n - Calculate a numerical score between -1\n (extremely negative) and 1 (extremely positive).\n - Provide a concise rationale explaining the\n short-term sentiment (give a detailed response\n with appropriate headlines for major events, and\n cryptocurrencies.\n 2. Long-Term Sentiment:\n - Evaluate the overall market outlook,\n fundamentals, and regulatory or macroeconomic\n factors.\n - Determine a sentiment category: \"Positive\",\n \"Neutral\", or \"Negative\".\n - Calculate a numerical score between -1\n (extremely negative) and 1 (extremely positive).\n  - Provide a detailed rationale explaining the\n long-term sentiment (give a detailed response\n with appropriate headlines for major events, and\n cryptocurrencies.\n\n Your output must be exactly a JSON object with\n exactly two keys: \"shortTermSentiment\" and\n \"longTermSentiment\". The value of each key must\n be an object with three keys: \"category\",\n \"score\", and \"rationale\". Do not output any\n additional text.\n For example, your output should look like:\n {\n \"shortTermSentiment\": {\n \"category\": \"Positive\",\n \"score\": 0.7,\n \"rationale\": \"....\"\n \"longTermSentiment\": {\n \"category\": \"Neutral\",\n \"score\": 0.0,\n \"rationale\": \"...\"\n }\n }\n Now, analyze the following text and produce your\n JSON output:\n {{ JSON.stringify($json.filteredArticles) }}",
+              "role": "system"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -420,
+        20
+      ],
+      "id": "4477ef51-2b7e-4555-be69-393ffbcc1be2",
+      "name": "Sentiment Analysis",
+      "credentials": {
+        "openAiApi": {
+          "id": "5AFzOhCrTRMOv3cw",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -20,
+        -80
+      ],
+      "id": "cd2bbcb0-1c55-4b3a-be60-1b9a666466a9",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialize containers\nconst allCandles = [];\nlet contentData = null;\n\n// Loop through all merged items\nfor (const item of items) {\n  // Append candle arrays\n  if (Array.isArray(item.json.allCandles)) {\n    allCandles.push(...item.json.allCandles);\n  }\n\n  // Extract message content (only once)\n  if (item.json.message?.content !== undefined && contentData === null) {\n    contentData = item.json.message.content;\n  }\n}\n\n// Return combined output\nreturn [\n  {\n    json: {\n      allCandles,\n      content: contentData\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        -80
+      ],
+      "id": "1f20384e-564e-4e73-9259-c66f0fd7a8ea",
+      "name": "Combine JSON Data"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here is combined market data for {{ $('Code').first().json.tradingPairSymbol }} you to reference:\n\n*Technical Data:*\n{{ JSON.stringify($json[\"allCandles\"], null, 2) }}\n\n*Sentiment Analysis:*\n{{ JSON.stringify($json[\"content\"], null, 2) }}\n\nThis is a JSON array where each element is a candlestick data object for a crypto asset. Each object has the following structure:\n- timeframe: either \"15m\", \"1h\", or \"1d\"\n- candles: an array of values in the following order:\n  [openTime, open, high, low, close, volume, closeTime, quoteVolume, trades, takerBuyBaseVolume, takerBuyQuoteVolume, ignore]\n\nSentiment Data: At the end of the JSON array there is also a long term and short term sentiment analysis based on crypto news headlines for the past 7 days.\n\n---\n\nPlease perform the following steps:\n\n*Group the Data:*\n• Short-term data: \"15m\" candles  \n• Medium-term data: \"1h\" candles  \n• Long-term data: \"1d\" candles\n\n*Analyze the Data in Detail:*\n\n*Short-term Analysis:*  \nUse the 15m candles (with supportive insights from the 1h candles) to evaluate volatility and determine near-term support and resistance levels. Combine MACD, RSI, and OBV with price action (support/resistance, trendlines, divergence).\n\n*Long-term Analysis:*  \nUse the 1d candles (and 1h) to assess direction and major zones. Integrate long-term trendlines, divergence, and indicators to understand market shifts.\n\n---\n\n📌 *Spot Trading Recommendation:*  \nShort-term:  \n• Action: ...  \n• Entry Price: ...  \n• Stop-Loss: ...  \n• Take Profit: ...  \n• Rationale:  \n  - Primary Signals: ...  \n  - Lagging Indicators: ...  \n  - Sentiment Analysis: ...\n\nLong-term:  \n• Action: ...  \n• Entry Price: ...  \n• Stop-Loss: ...  \n• Take Profit: ...  \n• Rationale:  \n  - Primary Signals: ...  \n  - Lagging Indicators: ...  \n  - Sentiment Analysis: ...\n\n📌 *Leveraged Trading Recommendation:*  \nShort-term:  \n• Position: ...  \n• Leverage: ...  \n• Entry Price: ...  \n• Stop-Loss: ...  \n• Take Profit: ...  \n• Rationale:  \n  - Primary Price Action Signals: ...  \n  - Lagging Indicator Confirmation: ...  \n  - Sentiment & Macro Analysis: ...\n\nLong-term:  \n• Position: ...  \n• Leverage: ...  \n• Entry Price: ...  \n• Stop-Loss: ...  \n• Take Profit: ...  \n• Rationale:  \n  - Primary Price Action Signals: ...  \n  - Lagging Indicator Confirmation: ...  \n  - Sentiment & Macro Analysis: ...\n\n---\n\nOutput should be plain text, formatted for Slack (bolds, spacing, no HTML).",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        360,
+        -80
+      ],
+      "id": "fdad0d67-725a-4e6e-8f0d-4ff2394197b5",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        140
+      ],
+      "id": "3f8516dd-90e7-458b-bf0b-e1690b3a59ed",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "5AFzOhCrTRMOv3cw",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "U0927UVAMD1",
+          "mode": "list",
+          "cachedResultName": "ai_agent_crypto_quant"
+        },
+        "text": "={{ $json.content }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1200,
+        -80
+      ],
+      "id": "76873d4c-c86b-4ed2-a685-493a70bb1a28",
+      "name": "response",
+      "webhookId": "0a8d1709-f022-499c-a01d-9b46adb04c77",
+      "credentials": {
+        "slackApi": {
+          "id": "yGdSgJ7iMde033md",
+          "name": "Slack account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputText = $json[\"output\"] || \"\";\n\nif (typeof inputText !== \"string\") {\n  throw new Error(\"Input must be a string\");\n}\n\nconst mid = Math.ceil(inputText.length / 2);\nconst firstHalf = inputText.substring(0, mid);\nconst secondHalf = inputText.substring(mid);\n\nreturn [\n  { json: { blockNumber: 1, content: firstHalf } },\n  { json: { blockNumber: 2, content: secondHalf } },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -80
+      ],
+      "id": "10078747-1811-4238-8071-4ca13a4030e3",
+      "name": "Split Message",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        940,
+        -80
+      ],
+      "id": "7ac9f048-a1bd-44da-b0e4-8b8800916a4f",
+      "name": "Loop Over Items",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C092EUBCWTE",
+          "mode": "list",
+          "cachedResultName": "all-ai-agent-crypto-quant"
+        },
+        "text": "={{ $json.output }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        820,
+        320
+      ],
+      "id": "c69f9be3-9b65-4e30-8fec-c61f235b4e9b",
+      "name": "response1",
+      "webhookId": "0a8d1709-f022-499c-a01d-9b46adb04c77",
+      "credentials": {
+        "slackApi": {
+          "id": "yGdSgJ7iMde033md",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "103b40da-bd3a-4a47-aae1-430f0c28dc8d",
+              "leftValue": "bot_id",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -1480,
+        -480
+      ],
+      "id": "5e4a1227-2f50-4baa-b48c-318c7446133a",
+      "name": "Filter"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Slack Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "HTTP 15m",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP 1H",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP 1D",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP 15m": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP 1H": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP 1D": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "combine_json_data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "combine_json_data": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Filter_news_article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter_news_article": {
+      "main": [
+        [
+          {
+            "node": "Sentiment Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sentiment Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Combine JSON Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine JSON Data": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "response": {
+      "main": [
+        []
+      ]
+    },
+    "Split Message": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ea588091-59cb-4c7a-b14e-93c73544bba4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0df0c2e21e920b3278dba5d802f867ca3bbcf50d95f63403ff8492fe2d549fd4"
+  },
+  "id": "WSXxevPPQOnkoiqP",
+  "tags": []
+}
